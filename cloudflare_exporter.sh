@@ -692,7 +692,7 @@ cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep -q ^0$ 
 
 
 OPTIONSSTRING=""
-[[ -z "$SOCKSURL" ]]      || OPTIONSSTRING=" -x socks5h://${SOCKSURL} "
+[[ -z "$SOCKSURL" ]]      || OPTIONSSTRING=" -x ${SOCKSURL} "
 [[ -z "$GZIPHEADER" ]]    || OPTIONSSTRING="${OPTIONSSTRING} ""${GZIPHEADER} "
 [[ -z "$CONTENTHEADER" ]] || OPTIONSSTRING="${OPTIONSSTRING} ""${CONTENTHEADER} "
 
