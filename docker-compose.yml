@@ -20,6 +20,7 @@ services:
 
   cloudflare-exporter:
     image: ghcr.io/rare-magma/cloudflare-exporter:latest
+    build: .
     init: true
     read_only: true
     cap_drop:

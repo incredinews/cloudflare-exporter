@@ -1,6 +1,12 @@
 # cloudflare-exporter_forked
 
-Bash script that uploads the Cloudflare Analytics API data to influxdb on an daily and hourly basis
+Bash script that uploads the Cloudflare Analytics API data to influxdb 
+
+improved features after forking:
+
+* use current timestamps and a configurable TIMERANGE of 5M|1H|1D ( e.g. export TIMERANGE=1D )
+* aggregates the data before writing
+
 
 
 ## Dependencies
