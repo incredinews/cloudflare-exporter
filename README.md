@@ -1,6 +1,7 @@
-# cloudflare-exporter
+# cloudflare-exporter_forked
 
-Bash script that uploads the Cloudflare Analytics API data to influxdb on an hourly basis
+Bash script that uploads the Cloudflare Analytics API data to influxdb on an daily and hourly basis
+
 
 ## Dependencies
 

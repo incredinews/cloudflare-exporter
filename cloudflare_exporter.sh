@@ -46,7 +46,7 @@ RFC_CURRENT_DATE=$($DATE --rfc-3339=date)
 ISO_CURRENT_DATE_TIME=$($DATE --iso-8601=seconds)
 ISO_CURRENT_DATE_TIME_1H_AGO=$($DATE --iso-8601=seconds --date "1 hour ago")
 ISO_CURRENT_DATE_TIME_2H_AGO=$($DATE --iso-8601=seconds --date "2 hour ago")
-INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=s&org=$ORG&bucket=$BUCKET"
+INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=ns&org=$ORG&bucket=$BUCKET"
 CF_URL="https://api.cloudflare.com/client/v4/graphql"
 
 nb_zones=$(echo "$CLOUDFLARE_ZONE_LIST" | $JQ 'length - 1')
@@ -624,15 +624,19 @@ END_HEREDOC
         | @tsv" |
                 $AWK '{printf "cloudflare_stats_kv_storage,account=%s,namespace=%s byteCount=%s,keyCount=%s %s\n", $1, $2, $3, $4, $5}'
         )
+        # orig script uses seconds 
+        # orig script triggered empty values and possibly wrong values with trailing space/tab
+        echo -n "$cf_stats_kv_storage" |sed 's/^\t\+/g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+            echo "$cf_stats_kv_storage" | sed 's/^\t\+/g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+                $CURL --silent --fail --show-error \
+                    --request POST "${INFLUXDB_URL}" \
+                    --header 'Content-Encoding: gzip' \
+                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+                    --header "Content-Type: text/plain; charset=utf-8" \
+                    --header "Accept: application/json" \
+                     --data-binary @-
+        )
 
-        echo "$cf_stats_kv_storage" | $GZIP |
-            $CURL --silent --fail --show-error \
-                --request POST "${INFLUXDB_URL}" \
-                --header 'Content-Encoding: gzip' \
-                --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-                --header "Content-Type: text/plain; charset=utf-8" \
-                --header "Accept: application/json" \
-                --data-binary @-
     done
 
 fi
