@@ -374,7 +374,7 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
         .sum.wallTime,
         ])
         | @tsv" |
-            $AWK '{printf "cloudflare_stats_workers,account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19}'
+            $AWK '{printf "cloudflare_stats_workers,window=${TIME_SPAN},account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19}'
     )
 
         #(.dimensions.datetimeHour | fromdateiso8601) stripped from jq and awk
@@ -477,7 +477,7 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
         .sum.wallTime,
         ])
         | @tsv" |
-            $AWK '{printf "cloudflare_stats_pf,account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15}'
+            $AWK '{printf "cloudflare_stats_pf,window=${TIME_SPAN},account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15}'
     )
 ## stripped datetime |fromiso8601 from jq and awk
         echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
@@ -567,7 +567,7 @@ END_HEREDOC
         .sum.requests,
         ])
         | @tsv" |
-                $AWK '{printf "cloudflare_stats_kv_ops,account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9}'
+                $AWK '{printf "cloudflare_stats_kv_ops,window=${TIME_SPAN},account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9}'
         )
 # stripped         (.dimensions.datetimeHour | fromdateiso8601) from jq and awk
         echo -n  "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
@@ -642,7 +642,7 @@ END_HEREDOC
         (.dimensions.datetimeHour | fromdateiso8601)
         ])
         | @tsv" |
-                $AWK '{printf "cloudflare_stats_kv_storage,account=%s,namespace=%s byteCount=%s,keyCount=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4}'
+                $AWK '{printf "cloudflare_stats_kv_storage,window=${TIME_SPAN},account=%s,namespace=%s byteCount=%s,keyCount=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4}'
         )
 # stripped         (.dimensions.datetimeHour | fromdateiso8601) from jq and awk
 
