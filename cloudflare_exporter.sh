@@ -52,7 +52,7 @@ ISO_CURRENT_DATE_TIME_1H_AGO=$($DATE --iso-8601=seconds --date "1 hour ago")
 ISO_CURRENT_DATE_TIME_2H_AGO=$($DATE --iso-8601=seconds --date "2 hour ago")
 ISO_CURRENT_DATE_TIME_1D_AGO=$($DATE --iso-8601=seconds --date "24 hour ago")
 
-[[ -z "$TIMESPAN" ]] && TIMESPAN=5M
+[[ -z "$TIMESPAN" ]] && TIMESPAN=1H
 REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
 [[ "$TIMESPAN" = "5M" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_5M_AGO"
 [[ "$TIMESPAN" = "1H" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
@@ -684,7 +684,10 @@ datapipe() {
 [[ "$NOGZIP" = "true" ]] && datapipe() { cat ; } ; 
 CONTENTHEADER='--header "Content-Type: text/plain; charset=utf-8" '
 [[ "${CONTENTJSON}" = "true" ]] && CONTENTHEADER="--header 'Content-Type: application/json' "
-cat  "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l 
+
+test -e "${TMPDATABASE}" { echo "NO_DB"; exit 1 ; } ;
+
+cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |sed 's/^/FLUX_TX_SIZE: /g'
 cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep -q ^0$ && { echo "EMPTY_DB"; exit 1 ; } ;
 
 
