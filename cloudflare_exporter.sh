@@ -60,7 +60,7 @@ REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
 
 [[ -z "$INFLUXDB_URL" ]] && INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=ns&org=$ORG&bucket=$BUCKET"
 
-TMPDATABASE=/tmp/influx.${CLOUDFLARE_ACCOUNT_TAG}.stats
+TMPDATABASE=/tmp/influx.${CLOUDFLARE_ACCOUNT_TAG}.${TIMESPAN}.stats
 #enable bearer auth for grafana
 echo "$INFLUXDB_API_TOKEN"|grep -q "Token "  && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
 echo "$INFLUXDB_API_TOKEN"|grep -q "Bearer " && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
