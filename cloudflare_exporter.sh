@@ -371,7 +371,7 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
         .sum.requests,
         .sum.responseBodySize,
         .sum.subrequests,
-        .sum.wallTime,
+        .sum.wallTime
         ])
         | @tsv" |
             $AWK '{printf "cloudflare_stats_workers,window=${TIME_SPAN},account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19}'
@@ -474,7 +474,7 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
         .sum.requests,
         .sum.responseBodySize,
         .sum.subrequests,
-        .sum.wallTime,
+        .sum.wallTime
         ])
         | @tsv" |
             $AWK '{printf "cloudflare_stats_pf,window=${TIME_SPAN},account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15}'
@@ -564,7 +564,7 @@ END_HEREDOC
         .quantiles.latencyMsP50,
         .quantiles.latencyMsP99,
         .sum.objectBytes,
-        .sum.requests,
+        .sum.requests
         ])
         | @tsv" |
                 $AWK '{printf "cloudflare_stats_kv_ops,window=${TIME_SPAN},account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9}'
@@ -638,8 +638,7 @@ END_HEREDOC
         [\"${CLOUDFLARE_ACCOUNT_TAG}\",
         .dimensions.namespaceId,
         .max.byteCount,
-        .max.keyCount,
-        (.dimensions.datetimeHour | fromdateiso8601)
+        .max.keyCount
         ])
         | @tsv" |
                 $AWK '{printf "cloudflare_stats_kv_storage,window=${TIME_SPAN},account=%s,namespace=%s byteCount=%s,keyCount=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4}'
