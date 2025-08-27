@@ -671,7 +671,7 @@ END_HEREDOC
 
 fi
 
-cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep ^0$ || { echo "EMPTY_DB; exit 1 ; } ;
+cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep ^0$ || { echo "EMPTY_DB"; exit 1 ; } ;
 cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$| sed "s~$~000000000~g"| $GZIP |
                 $CURL --silent --fail --show-error \
                     --request POST "${INFLUXDB_URL}" \
