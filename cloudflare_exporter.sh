@@ -44,11 +44,24 @@ fi
 
 RFC_CURRENT_DATE=$($DATE --rfc-3339=date)
 ISO_CURRENT_DATE_TIME=$($DATE --iso-8601=seconds)
+ISO_CURRENT_DATE_TIME_5M_AGO=$($DATE --iso-8601=seconds --date "5 minute ago")
 ISO_CURRENT_DATE_TIME_1H_AGO=$($DATE --iso-8601=seconds --date "1 hour ago")
 ISO_CURRENT_DATE_TIME_2H_AGO=$($DATE --iso-8601=seconds --date "2 hour ago")
 ISO_CURRENT_DATE_TIME_1D_AGO=$($DATE --iso-8601=seconds --date "24 hour ago")
+[[ -z "$TIMESPAN" ]] && TIMESPAN=5M
+REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
+[[ "$TIMESPAN" = "5M" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_5M_AGO"
+[[ "$TIMESPAN" = "1H" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
+[[ "$TIMESPAN" = "1D" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1D_AGO"
 
-INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=ns&org=$ORG&bucket=$BUCKET"
+[[ -z "$INFLUXDB_URL" ]] && INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=ns&org=$ORG&bucket=$BUCKET"
+
+
+#enable bearer auth for grafana
+echo "$INFLUXDB_API_TOKEN"|grep -q "Token "  && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
+echo "$INFLUXDB_API_TOKEN"|grep -q "Bearer " && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
+[[ -z "$INFLUXAUTHSTRING" ]] && INFLUXAUTHSTRING="Token $INFLUXDB_API_TOKEN"
+
 CF_URL="https://api.cloudflare.com/client/v4/graphql"
 
 nb_zones=$(echo "$CLOUDFLARE_ZONE_LIST" | $JQ 'length - 1')
@@ -116,7 +129,7 @@ for i in $(seq 0 "$nb_zones"); do
   "variables": {
     "zoneTag": "$cf_zone_id",
     "filter": {
-      "date_geq": "$RFC_CURRENT_DATE",
+      "date_geq": "$REFERENCE_DATE",
       "date_leq": "$RFC_CURRENT_DATE"
     }
   }
@@ -251,14 +264,15 @@ END_HEREDOC
             )
         done
 
-        echo "$cf_stats" | $GZIP |
-            $CURL --silent --fail --show-error \
-                --request POST "${INFLUXDB_URL}" \
-                --header 'Content-Encoding: gzip' \
-                --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-                --header "Content-Type: text/plain; charset=utf-8" \
-                --header "Accept: application/json" \
-                --data-binary @-
+        echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+            echo "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+                $CURL --silent --fail --show-error \
+                    --request POST "${INFLUXDB_URL}" \
+                    --header 'Content-Encoding: gzip' \
+                    --header "Authorization: $INFLUXAUTHSTRING" \
+                    --header "Content-Type: text/plain; charset=utf-8" \
+                    --header "Accept: application/json" \
+                     --data-binary @-
     fi
 done
 
@@ -293,7 +307,6 @@ WORKERS_GRAPHQL_QUERY=$(
             wallTimeP99
           }
           dimensions{
-            datetimeHour
             scriptName
             status
           }
@@ -303,12 +316,13 @@ WORKERS_GRAPHQL_QUERY=$(
   }",
   "variables": {
     "accountTag": "$CLOUDFLARE_ACCOUNT_TAG",
-    "datetimeStart": "$ISO_CURRENT_DATE_TIME_1H_AGO",
+    "datetimeStart": "$REFERENCE_DATE",
     "datetimeEnd": "$ISO_CURRENT_DATE_TIME"
   }
 }
 END_HEREDOC
 )
+#datetimehour stripped from dimensions
 
 cf_workers_json=$(
     $CURL --silent --fail --show-error --compressed \
@@ -361,14 +375,15 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
             $AWK '{printf "cloudflare_stats_workers,account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20}'
     )
 
-    echo "$cf_stats_workers" | $GZIP |
-        $CURL --silent --fail --show-error \
-            --request POST "${INFLUXDB_URL}" \
-            --header 'Content-Encoding: gzip' \
-            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-            --header "Content-Type: text/plain; charset=utf-8" \
-            --header "Accept: application/json" \
-            --data-binary @-
+        echo -n  "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+            echo "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+                $CURL --silent --fail --show-error \
+                    --request POST "${INFLUXDB_URL}" \
+                    --header 'Content-Encoding: gzip' \
+                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+                    --header "Content-Type: text/plain; charset=utf-8" \
+                    --header "Accept: application/json" \
+                     --data-binary @-
 
 fi
 
@@ -398,7 +413,6 @@ PAGES_FUNCTIONS_GRAPHQL_QUERY=$(
                     durationP99
                 }
                 dimensions {
-                    datetimeHour
                     scriptName
                     status
                     usageModel
@@ -409,13 +423,13 @@ PAGES_FUNCTIONS_GRAPHQL_QUERY=$(
 }",
   "variables": {
     "accountTag": "$CLOUDFLARE_ACCOUNT_TAG",
-    "datetimeStart": "$ISO_CURRENT_DATE_TIME_1H_AGO",
+    "datetimeStart": "$REFERENCE_DATE",
     "datetimeEnd": "$ISO_CURRENT_DATE_TIME"
   }
 }
 END_HEREDOC
 )
-
+#datetimehour stripped from dimensions
 cf_pf_json=$(
     $CURL --silent --fail --show-error --compressed \
         --request POST \
@@ -463,14 +477,15 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
             $AWK '{printf "cloudflare_stats_pf,account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16}'
     )
 
-    echo "$cf_stats_pf" | $GZIP |
-        $CURL --silent --fail --show-error \
-            --request POST "${INFLUXDB_URL}" \
-            --header 'Content-Encoding: gzip' \
-            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-            --header "Content-Type: text/plain; charset=utf-8" \
-            --header "Accept: application/json" \
-            --data-binary @-
+        echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+            echo "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+                $CURL --silent --fail --show-error \
+                    --request POST "${INFLUXDB_URL}" \
+                    --header 'Content-Encoding: gzip' \
+                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+                    --header "Content-Type: text/plain; charset=utf-8" \
+                    --header "Accept: application/json" \
+                     --data-binary @-
 fi
 
 if [[ -n "${CLOUDFLARE_KV_NAMESPACES}" ]]; then
@@ -496,7 +511,6 @@ if [[ -n "${CLOUDFLARE_KV_NAMESPACES}" ]]; then
                 }
                 dimensions {
                     actionType
-                    datetimeHour
                     namespaceId
                     responseStatusCode
                     result
@@ -508,12 +522,13 @@ if [[ -n "${CLOUDFLARE_KV_NAMESPACES}" ]]; then
   "variables": {
     "accountTag": "$CLOUDFLARE_ACCOUNT_TAG",
     "namespaceId": "$kv_namespace_id",
-    "datetimeStart": "$ISO_CURRENT_DATE_TIME_1H_AGO",
+    "datetimeStart": "$REFERENCE_DATE",
     "datetimeEnd": "$ISO_CURRENT_DATE_TIME"
   }
 }
 END_HEREDOC
         )
+#datetimehour stripped from dimensions
 
         cf_kv_json=$(
             $CURL --silent --fail --show-error --compressed \
@@ -553,14 +568,15 @@ END_HEREDOC
                 $AWK '{printf "cloudflare_stats_kv_ops,account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10}'
         )
 
-        echo "$cf_stats_kv" | $GZIP |
-            $CURL --silent --fail --show-error \
-                --request POST "${INFLUXDB_URL}" \
-                --header 'Content-Encoding: gzip' \
-                --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-                --header "Content-Type: text/plain; charset=utf-8" \
-                --header "Accept: application/json" \
-                --data-binary @-
+        echo -n  "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+            echo "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+                $CURL --silent --fail --show-error \
+                    --request POST "${INFLUXDB_URL}" \
+                    --header 'Content-Encoding: gzip' \
+                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+                    --header "Content-Type: text/plain; charset=utf-8" \
+                    --header "Accept: application/json" \
+                     --data-binary @-
 
         KV_STORAGE_GRAPHQL_QUERY=$(
             cat <<END_HEREDOC
@@ -577,7 +593,6 @@ END_HEREDOC
                     byteCount
                 }
                 dimensions {
-                    datetimeHour
                     namespaceId
                 }
             }
@@ -587,12 +602,13 @@ END_HEREDOC
   "variables": {
     "accountTag": "$CLOUDFLARE_ACCOUNT_TAG",
     "namespaceId": "$kv_namespace_id",
-    "datetimeStart": "$ISO_CURRENT_DATE_TIME_2H_AGO",
+    "datetimeStart": "$REFERENCE_DATE",
     "datetimeEnd": "$ISO_CURRENT_DATE_TIME"
   }
 }
 END_HEREDOC
         )
+#datetimehour stripped from dimensions
 
         cf_kv_storage_json=$(
             $CURL --silent --fail --show-error --compressed \
