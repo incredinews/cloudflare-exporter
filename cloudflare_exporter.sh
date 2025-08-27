@@ -694,7 +694,7 @@ OPTIONSSTRING=""
 [[ -z "$CONTENTHEADER" ]] || OPTIONSSTRING="${OPTIONSSTRING} ""${CONTENTHEADER} "
 
 cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$| sed "s~$~000000000~g"| datapipe >"${TMPDATABASE}.send"
-sendcommand=$(echo $CURL --silent --fail --show-error --request POST "'""${INFLUXDB_URL}""'" --header "'Authorization: ""${INFLUXAUTHSTRING}""'" $(echo $OPTIONSSTRING )  \
+sendcommand=$(echo $CURL -kLv --fail --show-error --request POST "'""${INFLUXDB_URL}""'" --header "'Authorization: ""${INFLUXAUTHSTRING}""'" $(echo $OPTIONSSTRING )  \
                     '--header "Accept: application/json"' \
                      --data-binary  @- )
 echo "$sendcommand"
