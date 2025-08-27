@@ -42,6 +42,7 @@ fi
 [[ $(echo "${CLOUDFLARE_ZONE_LIST}" | $JQ type 1>/dev/null) ]] && echo >&2 "CLOUDFLARE_ZONE_LIST is not valid JSON. Aborting" && exit 1
 [[ -n "${CLOUDFLARE_ACCOUNT_EMAIL}" ]] && CF_EMAIL_HEADER="X-Auth-Email: ${CLOUDFLARE_ACCOUNT_EMAIL}"
 
+
 RFC_CURRENT_DATE=$($DATE --rfc-3339=date)
 #CURRENT_UNIXTS=$($DATE +%s -d ISO_CURRENT_DATE_TIME )
 CURRENT_UNIXTS=$($DATE +%s )
@@ -59,7 +60,7 @@ REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
 
 [[ -z "$INFLUXDB_URL" ]] && INFLUXDB_URL="https://$INFLUXDB_HOST/api/v2/write?precision=ns&org=$ORG&bucket=$BUCKET"
 
-
+TMPDATABASE=/tmp/influx.${CLOUDFLARE_ACCOUNT_TAG}.stats
 #enable bearer auth for grafana
 echo "$INFLUXDB_API_TOKEN"|grep -q "Token "  && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
 echo "$INFLUXDB_API_TOKEN"|grep -q "Bearer " && INFLUXAUTHSTRING="$INFLUXDB_API_TOKEN"
@@ -266,16 +267,18 @@ END_HEREDOC
                     "$ts"
             )
         done
-
-        echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
-            echo "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-                $CURL --silent --fail --show-error \
-                    --request POST "${INFLUXDB_URL}" \
-                    --header 'Content-Encoding: gzip' \
-                    --header "Authorization: $INFLUXAUTHSTRING" \
-                    --header "Content-Type: text/plain; charset=utf-8" \
-                    --header "Accept: application/json" \
-                     --data-binary @- )
+        #echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ && ( echo "empty cf_stats")
+        echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( echo "$cf_stats" >> ${TMPDATABASE})
+        
+        #echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+        #    echo "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+        #        $CURL --silent --fail --show-error \
+        #            --request POST "${INFLUXDB_URL}" \
+        #            --header 'Content-Encoding: gzip' \
+        #            --header "Authorization: $INFLUXAUTHSTRING" \
+        #            --header "Content-Type: text/plain; charset=utf-8" \
+        #            --header "Accept: application/json" \
+        #             --data-binary @- )
     fi
 done
 
@@ -378,16 +381,17 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
     )
 
         #(.dimensions.datetimeHour | fromdateiso8601) stripped from jq and awk
-
-        echo -n  "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
-            echo "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-                $CURL --silent --fail --show-error \
-                    --request POST "${INFLUXDB_URL}" \
-                    --header 'Content-Encoding: gzip' \
-                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-                    --header "Content-Type: text/plain; charset=utf-8" \
-                    --header "Accept: application/json" \
-                     --data-binary @- )
+        #echo -n  "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ && ( echo "empty cf_stats_workers")
+        echo -n  "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( echo "$cf_stats_workers" >> ${TMPDATABASE})
+        #echo -n  "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+        #    echo "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+        #        $CURL --silent --fail --show-error \
+        #            --request POST "${INFLUXDB_URL}" \
+        #            --header 'Content-Encoding: gzip' \
+        #            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+        #            --header "Content-Type: text/plain; charset=utf-8" \
+        #            --header "Accept: application/json" \
+        #             --data-binary @- )
 
 fi
 
@@ -480,15 +484,17 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
             $AWK '{printf "cloudflare_stats_pf,window='"${TIMESPAN}"',account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s '"${CURRENT_UNIXTS}"'\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15}'
     )
 ## stripped datetime |fromiso8601 from jq and awk
-        echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
-            echo "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-                $CURL --silent --fail --show-error \
-                    --request POST "${INFLUXDB_URL}" \
-                    --header 'Content-Encoding: gzip' \
-                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
-                    --header "Content-Type: text/plain; charset=utf-8" \
-                    --header "Accept: application/json" \
-                     --data-binary @- )
+        #echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ && ( echo "empty cf_stats_pf")
+        echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( echo "$cf_stats_pf" >> ${TMPDATABASE})
+        #echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+        #    echo "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+        #        $CURL --silent --fail --show-error \
+        #            --request POST "${INFLUXDB_URL}" \
+        #            --header 'Content-Encoding: gzip' \
+        #            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+        #            --header "Content-Type: text/plain; charset=utf-8" \
+        #            --header "Accept: application/json" \
+        #             --data-binary @- )
 fi
 
 if [[ -n "${CLOUDFLARE_KV_NAMESPACES}" ]]; then
@@ -649,8 +655,24 @@ END_HEREDOC
 
         # orig script uses seconds 
         # orig script triggered empty values and possibly wrong values with trailing space/tab
-        echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
-            echo "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+        echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ && ( echo "empty cf_stats_pf")
+        echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( echo "$cf_stats_kv_storage" >> ${TMPDATABASE})
+#        echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
+#            echo "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
+#                $CURL --silent --fail --show-error \
+#                    --request POST "${INFLUXDB_URL}" \
+#                    --header 'Content-Encoding: gzip' \
+#                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
+#                    --header "Content-Type: text/plain; charset=utf-8" \
+#                    --header "Accept: application/json" \
+#                     --data-binary @- )
+
+    done
+
+fi
+
+cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep ^0$ || { echo "EMPTY_DB; exit 1 ; } ;
+cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$| sed "s~$~000000000~g"| $GZIP |
                 $CURL --silent --fail --show-error \
                     --request POST "${INFLUXDB_URL}" \
                     --header 'Content-Encoding: gzip' \
@@ -658,7 +680,3 @@ END_HEREDOC
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
                      --data-binary @- )
-
-    done
-
-fi
