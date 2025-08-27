@@ -272,7 +272,7 @@ END_HEREDOC
                     --header "Authorization: $INFLUXAUTHSTRING" \
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
-                     --data-binary @-
+                     --data-binary @- )
     fi
 done
 
@@ -383,7 +383,7 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
                     --header "Authorization: Token $INFLUXDB_API_TOKEN" \
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
-                     --data-binary @-
+                     --data-binary @- )
 
 fi
 
@@ -485,7 +485,7 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
                     --header "Authorization: Token $INFLUXDB_API_TOKEN" \
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
-                     --data-binary @-
+                     --data-binary @- )
 fi
 
 if [[ -n "${CLOUDFLARE_KV_NAMESPACES}" ]]; then
@@ -576,7 +576,7 @@ END_HEREDOC
                     --header "Authorization: Token $INFLUXDB_API_TOKEN" \
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
-                     --data-binary @-
+                     --data-binary @- )
 
         KV_STORAGE_GRAPHQL_QUERY=$(
             cat <<END_HEREDOC
@@ -652,8 +652,7 @@ END_HEREDOC
                     --header "Authorization: Token $INFLUXDB_API_TOKEN" \
                     --header "Content-Type: text/plain; charset=utf-8" \
                     --header "Accept: application/json" \
-                     --data-binary @-
-        )
+                     --data-binary @- )
 
     done
 
