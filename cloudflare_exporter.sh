@@ -43,11 +43,14 @@ fi
 [[ -n "${CLOUDFLARE_ACCOUNT_EMAIL}" ]] && CF_EMAIL_HEADER="X-Auth-Email: ${CLOUDFLARE_ACCOUNT_EMAIL}"
 
 RFC_CURRENT_DATE=$($DATE --rfc-3339=date)
+#CURRENT_UNIXTS=$($DATE +%s -d ISO_CURRENT_DATE_TIME )
+CURRENT_UNIXTS=$($DATE +%s )
 ISO_CURRENT_DATE_TIME=$($DATE --iso-8601=seconds)
 ISO_CURRENT_DATE_TIME_5M_AGO=$($DATE --iso-8601=seconds --date "5 minute ago")
 ISO_CURRENT_DATE_TIME_1H_AGO=$($DATE --iso-8601=seconds --date "1 hour ago")
 ISO_CURRENT_DATE_TIME_2H_AGO=$($DATE --iso-8601=seconds --date "2 hour ago")
 ISO_CURRENT_DATE_TIME_1D_AGO=$($DATE --iso-8601=seconds --date "24 hour ago")
+
 [[ -z "$TIMESPAN" ]] && TIMESPAN=5M
 REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_1H_AGO"
 [[ "$TIMESPAN" = "5M" ]]  && REFERENCE_DATE="$ISO_CURRENT_DATE_TIME_5M_AGO"
@@ -369,11 +372,12 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
         .sum.responseBodySize,
         .sum.subrequests,
         .sum.wallTime,
-        (.dimensions.datetimeHour | fromdateiso8601)
         ])
         | @tsv" |
-            $AWK '{printf "cloudflare_stats_workers,account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20}'
+            $AWK '{printf "cloudflare_stats_workers,account=%s,worker=%s status=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,responseBodySizeP50=%s,responseBodySizeP99=%s,wallTimeP50=%s,wallTimeP99=%s,clientDisconnects=%s,cpuTimeUs=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19}'
     )
+
+        #(.dimensions.datetimeHour | fromdateiso8601) stripped from jq and awk
 
         echo -n  "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
             echo "$cf_stats_kv_workers" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
@@ -471,12 +475,11 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
         .sum.responseBodySize,
         .sum.subrequests,
         .sum.wallTime,
-        (.dimensions.datetimeHour | fromdateiso8601)
         ])
         | @tsv" |
-            $AWK '{printf "cloudflare_stats_pf,account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16}'
+            $AWK '{printf "cloudflare_stats_pf,account=%s,scriptName=%s status=\"%s\",usageModel=\"%s\",cpuTimeP50=%s,cpuTimeP99=%s,durationP50=%s,durationP99=%s,clientDisconnects=%s,duration=%s,errors=%s,requests=%s,responseBodySize=%s,subrequests=%s,wallTime=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15}'
     )
-
+## stripped datetime |fromiso8601 from jq and awk
         echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
             echo "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
                 $CURL --silent --fail --show-error \
@@ -562,12 +565,11 @@ END_HEREDOC
         .quantiles.latencyMsP99,
         .sum.objectBytes,
         .sum.requests,
-        (.dimensions.datetimeHour | fromdateiso8601)
         ])
         | @tsv" |
-                $AWK '{printf "cloudflare_stats_kv_ops,account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s %s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10}'
+                $AWK '{printf "cloudflare_stats_kv_ops,account=%s,namespace=%s actionType=\"%s\",result=\"%s\",responseStatusCode=%s,latencyMsP50=%s,latencyMsP99=%s,objectBytes=%s,requests=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4, $5, $6, $7, $8, $9}'
         )
-
+# stripped         (.dimensions.datetimeHour | fromdateiso8601) from jq and awk
         echo -n  "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
             echo "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
                 $CURL --silent --fail --show-error \
@@ -640,8 +642,12 @@ END_HEREDOC
         (.dimensions.datetimeHour | fromdateiso8601)
         ])
         | @tsv" |
-                $AWK '{printf "cloudflare_stats_kv_storage,account=%s,namespace=%s byteCount=%s,keyCount=%s %s\n", $1, $2, $3, $4, $5}'
+                $AWK '{printf "cloudflare_stats_kv_storage,account=%s,namespace=%s byteCount=%s,keyCount=%s ${CURRENT_UNIXTS}\n", $1, $2, $3, $4}'
         )
+# stripped         (.dimensions.datetimeHour | fromdateiso8601) from jq and awk
+
+
+
         # orig script uses seconds 
         # orig script triggered empty values and possibly wrong values with trailing space/tab
         echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
