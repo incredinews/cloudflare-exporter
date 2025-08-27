@@ -42,6 +42,8 @@ fi
 [[ $(echo "${CLOUDFLARE_ZONE_LIST}" | $JQ type 1>/dev/null) ]] && echo >&2 "CLOUDFLARE_ZONE_LIST is not valid JSON. Aborting" && exit 1
 [[ -n "${CLOUDFLARE_ACCOUNT_EMAIL}" ]] && CF_EMAIL_HEADER="X-Auth-Email: ${CLOUDFLARE_ACCOUNT_EMAIL}"
 
+OPTIONSSTRING=""
+[[ -z "$SOCKSURL" ]]      || OPTIONSSTRING=" -x ${SOCKSURL} "
 
 RFC_CURRENT_DATE=$($DATE --rfc-3339=date)
 #CURRENT_UNIXTS=$($DATE +%s -d ISO_CURRENT_DATE_TIME )
@@ -142,7 +144,7 @@ END_HEREDOC
     )
 
     cf_json=$(
-        $CURL --silent --fail --show-error --compressed \
+        $CURL ${OPTIONSSTRING} --silent --fail --show-error --compressed \
             --request POST \
             --header "Content-Type: application/json" \
             --header "$CF_EMAIL_HEADER" \
@@ -272,7 +274,7 @@ END_HEREDOC
         
         #echo -n  "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
         #    echo "$cf_stats" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-        #        $CURL --silent --fail --show-error \
+        #        $CURL ${OPTIONSSTRING} --silent --fail --show-error \
         #            --request POST "${INFLUXDB_URL}" \
         #            --header 'Content-Encoding: gzip' \
         #            --header "Authorization: $INFLUXAUTHSTRING" \
@@ -331,7 +333,7 @@ END_HEREDOC
 #datetimehour stripped from dimensions
 
 cf_workers_json=$(
-    $CURL --silent --fail --show-error --compressed \
+    $CURL ${OPTIONSSTRING} --silent --fail --show-error --compressed \
         --request POST \
         --header "Content-Type: application/json" \
         --header "$CF_EMAIL_HEADER" \
@@ -386,7 +388,7 @@ if [[ $cf_nb_invocations -gt 0 ]]; then
 #        echo -n  "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep -q ^0$ || ( echo "$cf_stats_workers")
         #echo -n  "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
         #    echo "$cf_stats_workers" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-        #        $CURL --silent --fail --show-error \
+        #        $CURL ${OPTIONSSTRING} --silent --fail --show-error \
         #            --request POST "${INFLUXDB_URL}" \
         #            --header 'Content-Encoding: gzip' \
         #            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
@@ -440,7 +442,7 @@ END_HEREDOC
 )
 #datetimehour stripped from dimensions
 cf_pf_json=$(
-    $CURL --silent --fail --show-error --compressed \
+    $CURL ${OPTIONSSTRING} --silent --fail --show-error --compressed \
         --request POST \
         --header "Content-Type: application/json" \
         --header "$CF_EMAIL_HEADER" \
@@ -489,7 +491,7 @@ if [[ $cf_pf_nb_invocations -gt 0 ]]; then
         echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep -q ^0$ || ( echo "$cf_stats_pf" >> "${TMPDATABASE}" )
         #echo -n  "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
         #    echo "$cf_stats_pf" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-        #        $CURL --silent --fail --show-error \
+        #        $CURL ${OPTIONSSTRING} --silent --fail --show-error \
         #            --request POST "${INFLUXDB_URL}" \
         #            --header 'Content-Encoding: gzip' \
         #            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
@@ -541,7 +543,7 @@ END_HEREDOC
 #datetimehour stripped from dimensions
 
         cf_kv_json=$(
-            $CURL --silent --fail --show-error --compressed \
+            $CURL ${OPTIONSSTRING} --silent --fail --show-error --compressed \
                 --request POST \
                 --header "Content-Type: application/json" \
                 --header "$CF_EMAIL_HEADER" \
@@ -583,7 +585,7 @@ END_HEREDOC
 
         #echo -n  "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
         #    echo "$cf_stats_kv" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-        #        $CURL --silent --fail --show-error \
+        #        $CURL ${OPTIONSSTRING} --silent --fail --show-error \
         #            --request POST "${INFLUXDB_URL}" \
         #            --header 'Content-Encoding: gzip' \
         #            --header "Authorization: Token $INFLUXDB_API_TOKEN" \
@@ -624,7 +626,7 @@ END_HEREDOC
 #datetimehour stripped from dimensions
 
         cf_kv_storage_json=$(
-            $CURL --silent --fail --show-error --compressed \
+            $CURL ${OPTIONSSTRING} --silent --fail --show-error --compressed \
                 --request POST \
                 --header "Content-Type: application/json" \
                 --header "$CF_EMAIL_HEADER" \
@@ -664,7 +666,7 @@ END_HEREDOC
         echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep -q  ^0$ || ( echo "$cf_stats_kv_storage" >> ${TMPDATABASE} )
 #        echo -n  "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' |wc -c|grep ^0$ || ( 
 #            echo "$cf_stats_kv_storage" | sed 's/^\t\+//g;s/^ \+//g' | sed "s~$~000000000~g"| $GZIP |
-#                $CURL --silent --fail --show-error \
+#                $CURL ${OPTIONSSTRING} --silent --fail --show-error \
 #                    --request POST "${INFLUXDB_URL}" \
 #                    --header 'Content-Encoding: gzip' \
 #                    --header "Authorization: Token $INFLUXDB_API_TOKEN" \
