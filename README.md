@@ -6,7 +6,14 @@ improved features after forking:
 
 * use current timestamps and a configurable TIMERANGE of 5M|1H|1D ( e.g. export TIMERANGE=1D )
 * aggregates the data before writing
-
+* ability to use token OR bearer authentication by using "Token abcde" or "Bearer abcde" as INFLUX_TOKEN
+* keep the database ( so you can write to muptile endpoints since influx replication only works OUT OF oss )
+KEEP_DB=false
+* ability to send from a kept database and not collect new data  ( you should first run the script on another endpoint with KEEP_DB=false )
+SEND_ONLY=true
+and for grafana you can use these 2 options:
+NOGZIP=true
+CONTENTJSON=true
 
 
 ## Dependencies
