@@ -685,7 +685,7 @@ datapipe() {
 CONTENTHEADER='--header "Content-Type: text/plain; charset=utf-8" '
 [[ "${CONTENTJSON}" = "true" ]] && CONTENTHEADER="--header 'Content-Type: application/json' "
 
-test -e "${TMPDATABASE}" { echo "NO_DB"; exit 1 ; } ;
+test -e "${TMPDATABASE}" ||  { echo "NO_DB"; exit 1 ; } ;
 
 cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |sed 's/^/FLUX_TX_SIZE: /g'
 cat "${TMPDATABASE}"| sed 's/^\t\+//g;s/^ \+//g' |grep -v ^$|wc -l |grep -q ^0$ && { echo "EMPTY_DB"; exit 1 ; } ;
